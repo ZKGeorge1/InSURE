@@ -1,4 +1,4 @@
-import { Bool, Field } from "snarkyjs";
+import { Bool, Field } from "o1js";
 import { Report, Requirements } from 'C:/Users/samue/insureZecure/contracts/src/insureZecure';
 
 
