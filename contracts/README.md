@@ -1,4 +1,4 @@
-# Concealed Care - Smart contract
+# InSURE - Smart contract
 
 ## Run the CLI demo
 
