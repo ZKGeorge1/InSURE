@@ -10,7 +10,7 @@ import {
   Field,
   Bool,
   Poseidon,
-} from 'snarkyjs';
+} from 'o1js';
 import ZkappWorkerClient from './zkappWorkerClient';
 import { Report, Requirements } from 'C:/Users/samue/insureZecure/contracts/src/insureZecure';
 import { ReportFormInput, RequirementsFormInput, buildReportFromFormInput, buildRequirementsFromFormInput, reportFromJson, requirementsFromJson } from "@/util";
@@ -203,8 +203,8 @@ export default function NewReport() {
       if (!state.hasBeenSetup) {
         const zkappWorkerClient = new ZkappWorkerClient();
 
-        myLog('Loading SnarkyJS...');
-        await zkappWorkerClient.loadSnarkyJS();
+        myLog('Loading o1js...');
+        await zkappWorkerClient.loado1js();
         myLog('done');
 
         await zkappWorkerClient.setActiveInstanceToBerkeley();
