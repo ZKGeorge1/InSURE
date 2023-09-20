@@ -8,7 +8,7 @@ import {
   AccountUpdate,
   Bool,
   Poseidon,
-} from 'snarkyjs';
+} from 'o1js';
 
 await isReady;
 

@@ -1,4 +1,4 @@
-import {Field, SmartContract, state, State, method, Poseidon, Bool, Struct,} from 'snarkyjs';
+import {Field, SmartContract, state, State, method, Poseidon, Bool, Struct,} from 'o1js';
 
 export class Report extends Struct({
   patientIdHash: Field,
@@ -37,7 +37,6 @@ export class insureZecure extends SmartContract {
     this.reportHash.set(hashReport(report));
   }
 
-  // patient calls this method to publish proof of meeting the requirements for insurance
   @method publishInsuranceProof(
     report: Report,
     requirementsToCheck: Requirements
