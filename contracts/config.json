@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "deployAliases": {
+    "berkeley": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/berkeley.json",
+      "fee": "0.1",
+      "smartContract": "insureZecure"
+    },
+    "test001": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/test001.json",
+      "feepayerKeyPath": "C:\\Users\\samue/.cache/zkapp-cli/keys/01-deploy.json",
+      "feepayerAlias": "01-deploy",
+      "fee": "0.1",
+      "smartContract": "insureZecure"
+    }
+  }
+}
