@@ -10,7 +10,6 @@ const NavigationBar = () => {
   const { userRole } = useContext(UserTypeContext);
   return (
     <div className="sidenav flex-col flex w-48">
-      <div><img id="logo" src="/assets/cc-logo.svg"></img></div>
       <div className="links-container ml-10">
 
         <div>
