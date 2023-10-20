@@ -12,10 +12,6 @@ export default class ZkappWorkerClient {
 
   // ---------------------------------------------------------------------------------------
 
-  loado1js() {
-    return this._call('loado1js', {});
-  }
-
   setActiveInstanceToBerkeley() {
     return this._call('setActiveInstanceToBerkeley', {});
   }
@@ -28,13 +24,20 @@ export default class ZkappWorkerClient {
     return this._call('compileContract', {});
   }
 
-  fetchAccount({ publicKey }: { publicKey: PublicKey }): ReturnType<typeof fetchAccount> {
-    const result = this._call('fetchAccount', { publicKey58: publicKey.toBase58() });
-    return (result as ReturnType<typeof fetchAccount>);
+ fetchAccount({ 
+    publicKey,
+   }: { 
+    publicKey: PublicKey;
+   }): ReturnType<typeof fetchAccount> {
+    const result = this._call('fetchAccount', { 
+      publicKey58: publicKey.toBase58(),
+     });
+    return result as ReturnType<typeof fetchAccount>;
   }
 
   initZkappInstance(publicKey: PublicKey) {
-    return this._call('initZkappInstance', { publicKey58: publicKey.toBase58() });
+    return this._call('initZkappInstance', { 
+      publicKey58: publicKey.toBase58() });
   }
 
   async getRequirementsHash(): Promise<Field> {
