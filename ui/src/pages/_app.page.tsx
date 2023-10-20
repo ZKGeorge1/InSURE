@@ -5,6 +5,18 @@ import UserTypeContext from '../contexts/UserTypeContext';
 
 import './reactCOIServiceWorker';
 
+import { createContext, Dispatch, SetStateAction } from 'react';
+
+interface UserTypeContextType {
+  userRole: string;
+  setUserRole: Dispatch<SetStateAction<string>>;
+}
+
+const UserTypeContext = createContext<UserTypeContextType>({
+  userRole: '',
+  setUserRole: () => {},
+});
+
 export default function App({ Component, pageProps }: AppProps) {
   const [userRole, setUserRole] = useState('');
   return ( 
