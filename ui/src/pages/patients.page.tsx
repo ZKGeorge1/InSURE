@@ -7,14 +7,14 @@ export default function Patients() {
       name: "Samantha Hopkins",
       num_past_reports: 0,
       last_report_date: "1/1/2000",
-      accommodations: "None",
+      insurance: "None",
       public_key: "abc",
     },
     {
       name: "Jonathan Hsieh",
       num_past_reports: 2,
       last_report_date: "3/3/1999",
-      accommodations: "None",
+      insurance: "None",
       public_key: "abc",
     },
     
@@ -22,7 +22,7 @@ export default function Patients() {
       name: "Jessica Langdon",
       num_past_reports: 0,
       last_report_date: "12/19/1978",
-      accommodations: "None",
+      insurance: "None",
       public_key: "abc",
     }
   ];
