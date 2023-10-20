@@ -15,14 +15,12 @@ const state = {
 // ---------------------------------------------------------------------------------------
 
 const functions = {
-  loado1js: async (args: {}) => {
-    await isReady;
-  },
   setActiveInstanceToBerkeley: async (args: {}) => {
     const Berkeley = Mina.Network(
       'https://proxy.berkeley.minaexplorer.com/graphql'
     );
-    Mina.setActiveInstance(Berkeley);
+ console.log('Berkeley Instance Created');
+    Mina.setActiveInstance(Berkeley)  
   },
   loadContract: async (args: {}) => {
     const { insureZecure } = await import('C:/Users/samue/insureZecure/contracts/src/insureZecure');
@@ -40,8 +38,8 @@ const functions = {
     state.zkapp = new state.insureZecure!(publicKey);
   },
   getRequirementsHash: async (args: {}) => {
-    const currentNum = await state.zkapp!.verifiedRequirementsHash.fetch();
-    return JSON.stringify(currentNum!.toJSON());
+    const currentRequirementsHash = await state.zkapp!.verifiedRequirementsHash.fetch();
+    return JSON.stringify(currentRequirementsHash!.toJSON());
   },
   createPublishReportTransaction: async (args: { report: Report }) => {
     const transaction = await Mina.transaction(() => {
@@ -98,3 +96,4 @@ if (process) {
     }
   );
 }
+console.log('Web Worker Successfully Initialized.');
