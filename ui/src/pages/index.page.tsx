@@ -15,8 +15,11 @@ import ZkappWorkerClient from './zkappWorkerClient';
 import { Report, Requirements } from 'C:/Users/samue/insureZecure/contracts/src/insureZecure';
 import { ReportFormInput, RequirementsFormInput, buildReportFromFormInput, buildRequirementsFromFormInput, reportFromJson, requirementsFromJson } from "@/util";
 import NewRequest from "./new-request.page";
-import InsuranceProof from "./accom-proof.page";
-import VerifyInsuranceProof from "./verify-accom-proof.page";
+import InsuranceProof from "./insure-proof.page";
+import VerifyInsuranceProof from "./verify-insure-proof.page";
+import './reactCOIServiceWorker';
+import styles from '../../../ui/src/styles/Home.module.css';
+
 
 let transactionFee = 0.1;
 
@@ -34,53 +37,144 @@ export default function NewReport() {
     hash: ""
   });
 
+  const [displayText, setDisplayText] = useState("");
+  const [transactionlink, setTransactionLink] = useState("");
   let [form1output, setForm1output] = useState("")
   let [form2output, setForm2output] = useState("")
   let [form3output, setForm3output] = useState("")
   let [form4output, setForm4output] = useState("")
 
+    async function timeout(seconds: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, seconds * 1000);
+    });
+  }
+   useEffect(() => {
+    (async () => {
+      if (!state.hasBeenSetup) {
+        setDisplayText('Loading web worker...');
+        console.log('Loading web worker...');
+        const zkappWorkerClient = new ZkappWorkerClient();
+        await timeout(5);
+        console.log('Done loading web worker');
+
+        zkappWorkerClient.setActiveInstanceToBerkeley();
+
+        const mina = (window as any).mina;
+
+        if (mina == null) {
+          setState({ ...state, hasWallet: false });
+          return;
+        }
+
+        const publicKeyBase58: string = (await mina.requestAccounts())[0];
+        const publicKey = PublicKey.fromBase58(publicKeyBase58);
+        
+        console.log('public key: ', publicKey.toBase58());
+
+        console.log('checking if account exists...');
+
+        const res = await fetchAccount({
+          publicKey: publicKey!,
+        });
+
+
+        await zkappWorkerClient.loadContract();
+
+        console.log('Compiling zkApp...');
+        await zkappWorkerClient.compileContract();
+        console.log('zkApp compiled');
+
+        const zkappPublicKey = PublicKey.fromBase58(
+          'B62qoEMjuBPUhyqzmvX2hnTfBM1awk7nvXX1mi4e6BQUgpJ6MHWxezN'
+        );
+
+        await zkappWorkerClient.initZkappInstance(zkappPublicKey);
+
+        console.log('Getting zkApp state...');
+        await zkappWorkerClient.fetchAccount({ publicKey: zkappPublicKey });
+        const currentNum = await zkappWorkerClient.getRequirementsHash();
+        console.log('READY!')
+        doHideOverlay()
+
+        setState({
+          ...state,
+          zkappWorkerClient,
+          hasWallet: true,
+          hasBeenSetup: true,
+          publicKey,
+          zkappPublicKey,
+          currentNum,
+        });
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (state.hasBeenSetup && !state.accountExists) {
+        for (;;) {
+          setDisplayText('Checking if fee payer account exists...');
+          console.log('Checking if fee payer account exists...');
+          const res = await state.zkappWorkerClient!.fetchAccount({
+            publicKey: state.publicKey!,
+          });
+          const accountExists = res.error == null;
+          if (accountExists) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
+        setState({ ...state, accountExists: true });
+      }
+    })();
+  }, [state.hasBeenSetup]);
+
   async function publishReport(report: Report) {
     doShowOverlay()
-
     myLog('Publishing medical report hash...');
 
-    await state.zkappWorkerClient!.fetchAccount({
-      publicKey: state.publicKey!,
-    });
+    if (state.zkappWorkerClient) {  
+      state.zkappWorkerClient!.fetchAccount({ publicKey: state.publicKey!,
+});
+      
+      try {
+       await state.zkappWorkerClient.createPublishReportTransaction(report);
+       myLog('creating transaction...');
+       catch (e)
+      }
 
+      myLog('creating proof...');
+        await state.zkappWorkerClient!.proveTransaction();
 
-    myLog('creating transaction...');
-    await state.zkappWorkerClient!.createPublishReportTransaction(report);
+      const transactionJSON = await state.zkappWorkerClient!.getTransactionJSON();
 
-    myLog('creating proof...');
-    await state.zkappWorkerClient!.proveTransaction();
-
-    myLog('getting transaction JSON...');
-    const transactionJSON = await state.zkappWorkerClient!.getTransactionJSON();
-
-    myLog('requesting send transaction...');
-    const { hash } = await (window as any).mina.sendTransaction({
+      myLog('requesting send transaction...');
+      const { hash } = await (window as any).mina.sendTransaction({
       transaction: transactionJSON,
       feePayer: {
-        fee: transactionFee,
-        memo: '',
-      },
-    });
+      fee: transactionFee,
+      memo: ''}
+      })
+      
+      const transactionLink = `https://berkeley.minaexplorer.com/transaction/${hash}`;
+      console.log(`View transaction at ${transactionLink}`);
 
-    myLog(
-      'See transaction at https://berkeley.minaexplorer.com/transaction/' + hash
-    );
-    doHideOverlay()
-
-
+      setTransactionLink(transactionLink);
+    setDisplayText(transactionLink);
+    
     setState({ ...state, creatingTransaction: false, hash: hash });
     setForm1output(JSON.stringify(report, null, 2))
+
+    };
   }
 
-  async function publishInsuranceProof(report: Report, requirements: Requirements) {
+  async function publishInsureProof(report: Report, requirements: Requirements) {
     doShowOverlay()
 
-    myLog('Publishing health insurance proof...');
+    myLog('Publishing insurance  proof...');
 
     await state.zkappWorkerClient!.fetchAccount({
       publicKey: state.publicKey!,
@@ -89,7 +183,7 @@ export default function NewReport() {
     try {
 
       myLog('creating transaction...');
-      await state.zkappWorkerClient!.createPublishInsuranceProofTransaction(report, requirements);
+      await state.zkappWorkerClient!.createPublishInsureProofTransaction(report, requirements);
 
       myLog('creating proof...');
       await state.zkappWorkerClient!.proveTransaction();
@@ -120,10 +214,10 @@ export default function NewReport() {
     setForm3output("ok")
   }
 
-  async function publishVerifyInsuranceProof(requirements: Requirements) {
+  async function publishVerifyInsureProof(requirements: Requirements) {
     doShowOverlay()
 
-    myLog('Verifying health insurance proof...');
+    myLog('Verifying insurance proof...');
 
     await state.zkappWorkerClient!.fetchAccount({
       publicKey: state.publicKey!,
@@ -148,128 +242,64 @@ export default function NewReport() {
 
 
 
-      // await state.zkappWorkerClient!.createVerifyInsuranceProofTransaction(requirements);
+       await state.zkappWorkerClient!.createVerifyInsureProofTransaction(requirements);
 
-      // await state.zkappWorkerClient!.proveTransaction();
+       await state.zkappWorkerClient!.proveTransaction();
 
-      // myLog('getting transaction JSON...');
-      // const transactionJSON = await state.zkappWorkerClient!.getTransactionJSON();
+       myLog('getting transaction JSON...');
+       const transactionJSON = await state.zkappWorkerClient!.getTransactionJSON();
 
-      // myLog('requesting send transaction...');
-      // var { hash } = await (window as any).mina.sendTransaction({
-      //   transaction: transactionJSON,
-      //   feePayer: {
-      //     fee: transactionFee,
-      //     memo: '',
-      //   },
-      // });
+       myLog('requesting send transaction...');
+       var { hash } = await (window as any).mina.sendTransaction({
+         transaction: transactionJSON,
+         feePayer: {
+           fee: transactionFee,
+           memo: '',
+         },
+       });
 
     } catch (e) {
       alert('failed to verify proof: ' + e)
     }
 
-    // myLog(
-    //   'See transaction at https://berkeley.minaexplorer.com/transaction/' + hash
-    // );
+     myLog(
+       'See transaction at https://berkeley.minaexplorer.com/transaction/' + hash
+     );
     doHideOverlay()
 
 
-    // setState({ ...state, creatingTransaction: false, hash: hash });
+     setState({ ...state, creatingTransaction: false, hash: hash });
     setForm4output("ok")
   }
 
   useEffect(() => {
 
     const showDoctorBtn = document.getElementById('patientBtn');
-    const showEmployerBtn = document.getElementById('employerBtn');
+    const showInsurerBtn = document.getElementById('insurerBtn');
     const showPatientBtn = document.getElementById('doctorBtn');
 
-    showDoctorBtn!.addEventListener('click', () => {
+    showDoctorBtn?.addEventListener('click', () => {
       toggleVisibility('.doctor');
     });
 
-    showEmployerBtn!.addEventListener('click', () => {
+    showInsurerBtn?.addEventListener('click', () => {
       toggleVisibility('.employer');
     });
 
-    showPatientBtn!.addEventListener('click', () => {
+    showPatientBtn?.addEventListener('click', () => {
       toggleVisibility('.patient');
     });
+      },)
 
-    (async () => {
-      await isReady;
-      doShowOverlay()
-
-      if (!state.hasBeenSetup) {
-        const zkappWorkerClient = new ZkappWorkerClient();
-
-        myLog('Loading o1js...');
-        await zkappWorkerClient.loado1js();
-        myLog('done');
-
-        await zkappWorkerClient.setActiveInstanceToBerkeley();
-
-        const mina = (window as any).mina;
-
-        if (mina == null) {
-          setState({ ...state, hasWallet: false });
-          return;
-        }
-        const publicKeyBase58: string = (await mina.requestAccounts())[0];
-        const publicKey = PublicKey.fromBase58(publicKeyBase58);
-
-        myLog('public key: ', publicKey.toBase58());
-
-        myLog('checking if account exists...');
-        const res = await zkappWorkerClient.fetchAccount({
-          publicKey: publicKey!,
-        });
-        const accountExists = res.error == null;
-
-        await zkappWorkerClient.loadContract();
-
-        myLog('compiling zkApp');
-        await zkappWorkerClient.compileContract();
-        myLog('zkApp compiled');
-
-        const zkappPublicKey = PublicKey.fromBase58(
-          'B62qmYXReS5MVF5fZzR8pEtPwjA4zFkzMZJ5N4pmFsEEBS8RbGbAoLZ'
-        );
-
-        await zkappWorkerClient.initZkappInstance(zkappPublicKey);
-
-        myLog('getting zkApp state...');
-        await zkappWorkerClient.fetchAccount({ publicKey: zkappPublicKey });
-        myLog('READY!')
-        doHideOverlay()
-        // const currentNum = await zkappWorkerClient.getNum();
-        // myLog('current state:', currentNum.toString());
-
-        setState({
-          ...state,
-          zkappWorkerClient,
-          hasWallet: true,
-          hasBeenSetup: true,
-          publicKey,
-          zkappPublicKey,
-          accountExists,
-          // currentNum,
-        });
-
-      }
-
-
-    })();
-  }, []);
-
-  const toggleVisibility = (visibleClass:any) => {
+  const toggleVisibility = (visibleClass: any) => {
     const doctorDiv = document.querySelector('.doctor');
-    const employerDiv = document.querySelector('.employer');
+    const insurerDiv = document.querySelector('.insurer');
     const patientDiv = document.querySelector('.patient');
+  
 
-    doctorDiv!.classList.remove('visible');
-    employerDiv!.classList.remove('visible');
-    patientDiv!.classList.remove('visible');
+    doctorDiv?.classList.remove('visible');
+    insurerDiv?.classList.remove('visible');
+    patientDiv?.classList.remove('visible');
 
     document.querySelector(visibleClass).classList.add('visible');
   };
@@ -304,13 +334,48 @@ export default function NewReport() {
     setForm2output(JSON.stringify(req, null, 2))
   }
 
-  function submitInsuranceProof(reportJsonString: string, requirementsJsonString: string) {
-    publishInsuranceProof(reportFromJson(reportJsonString), requirementsFromJson(requirementsJsonString))
+  function submitInsureProof(reportJsonString: string, requirementsJsonString: string) {
+    publishInsureProof(reportFromJson(reportJsonString), requirementsFromJson(requirementsJsonString))
   }
 
-  function submitVerifyInsuranceProof(requirementsJsonString: string) {
-    publishVerifyInsuranceProof(requirementsFromJson(requirementsJsonString))
+  function submitVerifyInsureProof(requirementsJsonString: string) {
+    publishVerifyInsureProof(requirementsFromJson(requirementsJsonString))
   }
+
+  // Create UI elements
+
+  let hasWallet;
+  if (state.hasWallet != null && !state.hasWallet) {
+    const auroLink = 'https://www.aurowallet.com/';
+    const auroLinkElem = (
+      <a href={auroLink} target="_blank" rel="noreferrer">
+        Install Auro wallet here
+      </a>
+    );
+    hasWallet = (
+      <div>
+        Could not find a wallet. {auroLinkElem}
+      </div>
+    );
+  }
+
+  const stepDisplay = transactionlink ? (
+    <a href={displayText} target="_blank" rel="noreferrer">
+      View transaction
+    </a>
+  ) : (
+    displayText
+  );
+
+  let setup = (
+    <div
+      className={styles.start}
+      style={{ fontWeight: 'bold', fontSize: '1.5rem', paddingBottom: '5rem' }}
+    >
+      {stepDisplay}
+      {hasWallet}
+    </div>
+  );
 
   return (
     <div className="App bg-white-50 dark:bg-zinc-900">
@@ -379,6 +444,19 @@ export default function NewReport() {
             ></input>
           </div>
 
+          <div className="blood-pressure mt-5">
+            <h3>Blood Pressure</h3>
+            <input
+              className="appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-purple-500"
+              id="condition-1"
+              type="text"
+              placeholder="90"
+              onChange={(e) => {
+                setBloodPressure(e.target.value);
+              }}
+            ></input>
+          </div>
+
           <div className="coditions mt-5">
             <h3>Condition #1</h3>
             <input
@@ -435,8 +513,8 @@ export default function NewReport() {
         </>)}
         </div>
 
-        <div className="employer">
-        <h1>Employer - Request Health Insurance Proof from Patient</h1>
+        <div className="insurer">
+        <h1>Insurer - Request Insurance Proof from Patient</h1>
         <NewRequest submitRequest={submitRequest} />
         {form2output && (<>
           <h1>Requirements request for patient</h1>
@@ -445,20 +523,20 @@ export default function NewReport() {
           </pre>
         </>)}
         
-        <h1>Employer - Verify Health Insurance Proof</h1>
-        <VerifyInsuranceProof submitVerifyInsuranceProof={submitVerifyInsuranceProof} />
+        <h1>Insurer - Verify Insurance Proof</h1>
+        <VerifyInsureProof submitVerifyInsureProof={submitVerifyInsureProof} />
         {form4output && (<>
-          <h1>Health insurance proof verified!</h1>
-          {/* <a className="my-5" href={'https://berkeley.minaexplorer.com/transaction/' + state.hash}><code>{state.hash}</code></a> */}
+          <h1>Insurance proof verified!</h1>
+          { <a className="my-5" href={'https://berkeley.minaexplorer.com/transaction/' + state.hash}><code>{state.hash}</code></a> }
         </>)}
 
         </div>
 
         <div className="patient">
-        <h1>Patient - Submit Health Insurance Proof</h1>
-        <InsuranceProof submitInsuranceProof={submitInsuranceProof} />
+        <h1>Patient - Submit Insurance Proof</h1>
+        <InsureProof submitInsureProof={submitInsureProof} />
         {form3output && (<>
-          <h1>Health Insurance proof submitted!</h1>
+          <h1>Insurance proof submitted!</h1>
           <a className="my-5" href={'https://berkeley.minaexplorer.com/transaction/' + state.hash}><code>{state.hash}</code></a>
         </>)}
 
@@ -468,7 +546,7 @@ export default function NewReport() {
             <div className="tertiary-group">
                 <h4 className="green">PASS</h4>
                 <p>Company Name: <span>Fake Starbucks</span></p>
-                <p>Health Insurance: <span>Basic Rate</span></p>
+                <p>Insurance: <span></span></p>
                 <p>Status: <span className="orange">Not Sent</span></p>
 
                 <button
@@ -482,7 +560,7 @@ export default function NewReport() {
             <div className="tertiary-group">
                 <h4 className="red">NOT PASS</h4>
                 <p>Company Name: <span>Fake Starbucks</span></p>
-                <p>Health Insurance: <span>Flexible Work Hours</span></p>
+                <p>Insurance: <span></span></p>
                 <p>Status: <span className="orange">Not Sent</span></p>
 
                 <button
