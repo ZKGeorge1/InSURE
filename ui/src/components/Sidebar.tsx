@@ -52,4 +52,28 @@ const NavigationBar = () => {
   );
 }
 
+
+const Header = () => {
+  const {userRole} = useContext(UserTypeContext);
+  return (
+    <div className="heading-container bg-main">
+      {userRole === 'doctor' && <div className="profile-info text-lg large-font heading-font shrink-0 mx-5 mt-2 ">
+        <h3>Hospital</h3>
+        <p>MIIBOgIBAAJBAKj34GkxFhD90vcNLYL</p>
+      </div>}
+
+      {userRole === 'user' && <div className="profile-info text-lg large-font heading-font shrink-0 mx-5 mt-2 ">
+        <h3>Ruby Adelmund</h3>
+        <p>hdI4yZ5ew18JH4JW9jbhUFrviQzM7</p>
+      </div>}
+
+      {userRole === 'company' && <div className="profile-info text-lg large-font heading-font shrink-0 mx-5 mt-2 ">
+        <h3>Fake Starbucks</h3>
+        <p>GRIBOgIBAAJBAKj34GkxFhD90vcNLJK</p>
+      </div>}
+      <NavigationBar />
+    </div>
+  );
+}
+
 export default Header
